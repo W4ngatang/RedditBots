@@ -50,6 +50,6 @@ for submission in subreddit.get_hot(limit=5):
         root = testing.add_comment(msg)
     else:
         root.reply(msg)
-    print(msg)
+#    print(msg)
 #    testing.add_comment(msg)
 #    r.submit(testing, title="AMASummary2", text=msg)

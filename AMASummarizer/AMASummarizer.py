@@ -14,7 +14,7 @@ r = praw.Reddit('AMA Summarizer by u/w4ngatang v 0.1.'
 
 r.login('AMASummaryBot', '9kSYpVcGV5h1HC31mpfj')
 summarized = [] 
-summarizing = []
+summarizing = {}
 
 # go through summarizing list and update, removing into summarized if detect AMA finished
 def summarize():
@@ -27,9 +27,16 @@ def summarize():
         # create initial message, set up table
         msg = MSG_BASE 
         
-        # base comment
-        # if first message exceeds character limit, further posts will be replies to root
-        root = None
+        # find root comment (if it's there)
+        # if it has children, find which is the most recent to edit on
+        root = summarizing[submission][0]
+        working = root
+        early_elapsed = (current_time - root.created_utc) / 60
+        for reply in root.replies():
+           elapsed = (current_time - reply.created_utc) / 60 
+           if elapsed < early_elapsed: #and (belongs to bot):
+               working = reply
+               early_elapsed = elapsed 
 
         # get all the responses posted by AMA author
         author = r.get_redditor(submission.author)
@@ -37,9 +44,9 @@ def summarize():
         for response in responses:
 
             # if the response is for the AMA
-            if response.submission == submission:
+            if response.submission == submission and response not in summarizing[submission]:
 
-                # get the comment and its parent
+                # get the comment's parent (the question)
                 url = response.link_url + response.parent_id[3:]
                 s = r.get_submission(url)
                 question = s.comments[0]
@@ -53,18 +60,19 @@ def summarize():
 
                 # if the proposed msg would be too long, post the existing msg
                 # and reset msg
-                if len(msg + tmp) > MAX_LEN:
-                    testing.add_comment(msg) if root == None else root.reply(msg)
-                    # reset the msg
-                    msg = MSG_BASE 
-
-                # increment the message
-                msg = msg + tmp 
+                if len(working.body + tmp) < MAX_LEN:
+#                    testing.add_comment(msg) if root == None else root.reply(msg)
+                    testing.edit(working.body + tmp)
+                else:
+                    msg = msg + tmp 
 
                 # keep track of latest submission time, for end of AMA detection
                 elapsed = (current_time - recent.created_utc) / 60 / 60 
                 if elapsed < most_recent or most_recent == None:
                     most_recent = elapsed
+
+                # add to the list of comments tracked
+                summarizing[submission].append(response)
 
         # post the message
         if len(msg) > len(MSG_BASE): 
@@ -73,7 +81,7 @@ def summarize():
         # check if AMA has finished
         # roughly determined by latest from author to the AMA is older than 2 hrs
         if most_recent > TIME_LIMIT:
-            summarizing.remove(submission)
+            del summarizing[submission] 
             summarized.add(submission)
 
 
@@ -87,9 +95,10 @@ while True:
         if "[AMA Request]" in submission.title:
             continue
 
-        # make sure not already finished
+        # make sure not already finished and not currently working on
         if submission not in summarized and submission not in summarizing: 
-            summarizing.append(submission)
+            summarizing[submission] = []
+            summarizing[submission][0] = None # reserve the first place for the root comment
 
         # summarizing the AMAs in summarizing[]
         summarize()

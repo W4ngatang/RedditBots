@@ -6,6 +6,7 @@ MAX_LEN = 10000                                         # max message length, se
 RESPONSE_LIMIT = 10                                     # number of comments to pull at a time
 SUB_LIMIT = 10                                          # number of submissions to pull at a time
 SLEEP_TIME = 120                                        # amount of time to sleep
+TIME_LIMIT = 2                                          # time in hours for end of AMA detection
 MSG_BASE = "Question | Answer \n ----------|----------" # base for summarizing
 
 r = praw.Reddit('AMA Summarizer by u/w4ngatang v 0.1.'
@@ -18,6 +19,11 @@ summarizing = []
 # go through summarizing list and update, removing into summarized if detect AMA finished
 def summarize():
     for submission in summarizing:
+
+        # time variables to check when AMA has finished
+        current = int(time.time())
+        most_recent = None 
+
         # create initial message, set up table
         msg = MSG_BASE 
         
@@ -55,20 +61,20 @@ def summarize():
                 # increment the message
                 msg = msg + tmp 
 
+                # keep track of latest submission time, for end of AMA detection
+                elapsed = (current_time - recent.created_utc) / 60 / 60 
+                if elapsed < most_recent or most_recent == None:
+                    most_recent = elapsed
+
         # post the message
         if len(msg) > len(MSG_BASE): 
             testing.add_comment(msg) if root == None else root.reply(msg)
 
         # check if AMA has finished
-        # roughly determined if AMA is older than six hours
-        current_time = int(time.time())
-        most_recent = author.get_comments(limit = 1)
-        for recent in most_recent:
-            elapsed = (current_time - recent.created_utc) / 60 / 60 
-        if elapsed > 2:
-            summarized.append(submission.id)
-        elif submission.id not in summarizing:
-            summarizing.append(submission.id) 
+        # roughly determined by latest from author to the AMA is older than 2 hrs
+        if most_recent > TIME_LIMIT:
+            summarizing.remove(submission)
+            summarized.add(submission)
 
 
 # get new submissions

@@ -2,7 +2,7 @@
 
 My collection of Reddit bots.
 
-AMASummarizer:
+**AMASummarizer**:
 
 For r/iama, finds the questions that the OP answered and aggregates them in one post
 
@@ -12,6 +12,6 @@ Known bugs:
 - need to handle root level comments of OP (e.g. when signing off)
 - need to handle ampersands, link text, other symbols
 
-MusicDiscovery:
+**MusicDiscovery**:
 
 For r/listentothis, for a submission, searches Spotify, Youtube, Soundcloud, etc. for more music by the artist.
